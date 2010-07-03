@@ -19,10 +19,9 @@ for iter in lines_l:
 				code = int (qiter_l[1], 16) # two-byte instructions remain
 				opcode = code / 0x100		# insulate opcode
 				modrmbyte = code % 0x100        # insulate mod-r/m byte
-				mode = codel / 0x40
-				instruction = (codel - mode * 0x40) / 8 # insulate the r/m bits, value enumerates instruction
-				print instruction
-				if codeh in [	0xFF, 
+				mode = modrmbyte / 0x40
+				instruction = (modrmbyte - mode * 0x40) / 8 # insulate the r/m bits, value enumerates instruction
+				if opcode in [	0xFF, 
 						0xFE,
 						0xC5,
 						0xC4,
