@@ -21,7 +21,7 @@ wc *.tdiff
 # make sure that dasm3.py's disassembly is different
 # from DEBUG.EXE's only for crappy "unundocumented" 
 # instructions
-./tdiffokay.py < bad.tdiff
+./okaytdiff.py < bad.tdiff
 
 # If everything is right, no output is produced
 
