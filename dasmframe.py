@@ -15,7 +15,7 @@ def dump_first_code_segment (src_pn, segment=0):
     d = dasm3.Disassembler ()
     seg_len = min (1 << 16, hdr.calc_length () - hdr.calc_code_start ())
     block = 0
-    for i in d.disassemble (src_fp.read (seg_len), segment=segment, trap=1, quiet=1):
+    for i in d.disassemble (src_fp.read (seg_len), segment=segment, trap=1, quiet=0):
         print i
         if (i.addr.offset >> 12) != block:
             block = i.addr.offset >> 12
