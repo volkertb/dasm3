@@ -359,7 +359,8 @@ class Disassembler (object):
             return ArgRegister (code=self.modrm['reg'], type=desc[1])
         elif desc[0] == 'I':
             if desc[1] == '0':
-                # Very special case
+                # Very special case, AAM and AAD instruction only 
+                # see http://code.google.com/p/dasm3/wiki/UnderstandingTheOpcodeTable
                 value = self.read_integer (1)
                 if value == 0xa: 
                     return
