@@ -155,22 +155,30 @@ class ArgInteger (Argument):
             return '%0*X' % (self.value_size/4, self.value)
 
 class ArgDereference (Argument):
-    q_opcodes        = set([0x80, 
-                            0x81, 
-                            0x82, 
-                            0x83, 
-                            0xC6, 
-                            0xC7,
-                            0xD0, 
-                            0xD1, 
-                            0xD2, 
-                            0xD3, 
-                            0xF6, 
-                            0xF7, 
-                            0xFE, 
-                            0xFF])
+    # "qualifier opcodes, require WORD PTR or BYTE PTR qualifier
+    q_opcodes        = set([0x80, # GRP1 = ALU ops 
+                            0x81, # GRP1 = ALU ops
+                            0x82, # GRP1 = ALU ops
+                            0x83, # GRP1 = ALU ops
+                            0xC6, # MOV 
+                            0xC7, # MOV
+                            0xD0, # GRP2 = shifter ops 
+                            0xD1, # GRP2 = shifter ops
+                            0xD2, # GRP2 = shifter ops
+                            0xD3, # CRP2 = shifter ops
+                            0xF6, # GRP3a = extra ALU ops  
+                            0xF7, # GRP3b = extra ALU ops
+                            0xFE, # GRP4 = INC, DEC. 
+                            0xFF]) # GRP5 = INC, DEC, CALL, JMP, etc.
+
+    # These are exceptions for 0xFE (and 0xFF for DEBUG.EXE) opcodes
     nq_mnemonics = set(['PUSH', 'CALL', 'JMP'])
+
+    # PUSH can't have a far, but CALL and JMP can
     q_far_mnemonics = set(['CALL', 'JMP'])
+
+    # if no exceptions apply, we can use a simple lookup table for
+    # determining the qualifier. 
     q_lut = {'b':'BYTE PTR', 'w':'WORD PTR', 'v':'WORD PTR', 'p':'FAR'}
     
     def __init__ (self, type=None, base=None, index=None, disp=None, disp_size=None):
@@ -185,10 +193,15 @@ class ArgDereference (Argument):
         rv = []
         n_terms = 0
         # Qualifier, if applicable
-                   
+
+        # we must determine whether a "BYTE PTR" or "WORD PTR" or nothing like that
+        # is needed                   
         if self._parent.code.get_opcode() in self.q_opcodes:
-            if (not str(self._parent.mnemonic).strip() in self.nq_mnemonics or
-                ((str(self._parent.mnemonic).strip() in self.q_far_mnemonics) and (self.type == 'p'))):
+            is_nq_mnemonics = str(self._parent.mnemonic).strip() in self.nq_mnemonics 
+            is_q_far_mnemonics = str(self._parent.mnemonic).strip() in self.q_far_mnemonics
+            is_p_type = self.type == 'p'
+
+            if not is_nq_mnemonics or (is_q_far_mnemonics and is_p_type):
                 rv.append(self.q_lut[self.type] + ' ')
             
         # Bracket for dereference, as [bx+si]
@@ -207,11 +220,12 @@ class ArgDereference (Argument):
             if self.disp_size == 8:
                 # 8-bit displacement; always preceeded by at least one term
                 disp = self.disp
+                # do we need a '+' or '-' sign?
 		sign = '+' 
-                if disp >= 0x80: 
+                if disp >= 0x80: # negative, '-' sign
 			disp = abs (disp - 0x100)
 			sign = '-'
-                rv.append('%c%02X' % (sign, disp))
+                rv.append('%c%02X' % (sign, disp)) # ... or '+' sign
 		n_terms += 1
             else:
                 # 16-bit displacement
