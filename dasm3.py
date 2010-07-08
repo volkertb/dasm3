@@ -65,6 +65,10 @@ class Instruction (object):
             out = core
 	return "%-64s" % out
 
+class ModRm (object):
+	def __init__ (self, rm, reg):
+		self.rm = rm
+		self.reg = reg
 
 class Address (object):
     def __init__ (self, segment, offset):
@@ -267,7 +271,7 @@ class Disassembler (object):
         if mod == 0:
             if rm == 6:
                 # Special case
-                self.modrm = {'rm' : ArgDereference (disp=self.read_integer (2), disp_size=16), 'reg' : reg}
+                self.modrm = ModRm (ArgDereference (disp=self.read_integer (2), disp_size=16), reg)
                 return
             disp = None
             disp_size = None
@@ -278,7 +282,7 @@ class Disassembler (object):
             disp = self.read_integer(2)
             disp_size = 16
         elif mod == 3:
-            self.modrm = {'rm' : ArgRegister (code=rm), 'reg' : reg}
+            self.modrm = ModRm (ArgRegister (code=rm), reg)
             return
 
         if rm == 0:
@@ -306,7 +310,7 @@ class Disassembler (object):
             base = reg_set.BX
             index = None
 
-        self.modrm = {'rm' : ArgDereference (base=base, index=index, disp=disp, disp_size=disp_size), 'reg' : reg}
+        self.modrm = ModRm (ArgDereference (base=base, index=index, disp=disp, disp_size=disp_size), reg)
 
     def read_opcode (self):
         opcode = ord (self.bytes[self.index])
@@ -317,14 +321,15 @@ class Disassembler (object):
         # Handle group opcodes, and opcode extensions
         if mnemonic[:3] == 'GRP':
             self.read_modrm ()
-            extension = opcode_extension_map[(mnemonic, self.modrm['reg'])]
-            if (extension[0] == '--'):
+            extension = opcode_extension_map[(mnemonic, self.modrm.reg)]
+            if extension[0] == '--':
                 # Special case - illegal extension, use the '???' pseudo-mnemonic
                 mnemonic = '???'
             else:
                 mnemonic = extension[0]
             # Override the primary opcode's argument descriptors iff the extension's set is non-empty
-            if (extension[1:]): arguments = extension[1:]
+            if extension[1:]: 
+                arguments = extension[1:]
 
         return mnemonic, arguments
 
@@ -343,7 +348,7 @@ class Disassembler (object):
         elif desc == 'M':
             # pseudo-dereference
             self.read_modrm()
-            rm = self.modrm['rm']
+            rm = self.modrm.rm
             rm.set_type('v')
             return rm
         elif desc[0] == 'A':
@@ -351,12 +356,12 @@ class Disassembler (object):
             return ArgAddress (self.read_integer (2), offset)
         elif desc[0] in 'EM':
             self.read_modrm()
-            rm = self.modrm['rm']
+            rm = self.modrm.rm
             rm.set_type(desc[1])
             return rm
         elif desc[0] == 'G':
             self.read_modrm ()
-            return ArgRegister (code=self.modrm['reg'], type=desc[1])
+            return ArgRegister (code=self.modrm.reg, type=desc[1])
         elif desc[0] == 'I':
             if desc[1] == '0':
                 # Very special case, AAM and AAD instruction only 
@@ -375,7 +380,7 @@ class Disassembler (object):
             return ArgDereference (type = desc[1], disp = self.read_integer (2), disp_size=16)
         elif desc[0] == 'S':
             self.read_modrm ()
-            return ArgRegister (code=self.modrm['reg'] & 0x3, type='S')
+            return ArgRegister (code=self.modrm.reg & 0x3, type='S')
         else:
             raise "Unknown argument description %s" % desc
 

@@ -16,7 +16,7 @@ export PYTHONPATH=..
 ./tdiff.py all DOSBOX/RANDOM.DOT test-debug-exe.out > good.tdiff 2> bad.tdiff
 
 # bad should be much smaller than good
-wc *.tdiff
+# wc *.tdiff
 
 # make sure that dasm3.py's disassembly is different
 # from DEBUG.EXE's only for crappy "unundocumented" 
