@@ -246,6 +246,9 @@ class ArgDereference (Argument):
         self.type    = type
 
 
+def DestructureModRmByte (modrm):
+	return modrm >> 6, (modrm >> 3) & 7, modrm & 7
+
 class Disassembler (object):
     def __init__ (self):
         self.index = 0
@@ -264,13 +267,16 @@ class Disassembler (object):
 
         modrm = ord (self.bytes[self.index])
         self.index += 1
-        mod = modrm >> 6
-        reg = (modrm >> 3) & 7
-        rm = modrm & 7
+
+        # mod = modrm >> 6
+        # reg = (modrm >> 3) & 7
+        # rm = modrm & 7
+	
+	mod, reg, rm = DestructureModRmByte (modrm)
 
         if mod == 0:
             if rm == 6:
-                # Special case
+                # Special case for disp_size = 16 (rm == 0b110)
                 self.modrm = ModRm (ArgDereference (disp=self.read_integer (2), disp_size=16), reg)
                 return
             disp = None
