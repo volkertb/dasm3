@@ -37,12 +37,12 @@ class MzHeader:
     def __init__ (self, fn):
         self._fn = fn
         fmt = '<' + ''.join ([p[0] for p in self._fields])
-        data = struct.unpack_from (fmt, file (self._fn, 'rb').read (struct.calcsize(fmt)))
+        data = struct.unpack_from (fmt, open(self._fn, 'rb').read (struct.calcsize(fmt)))
         for i in range (len (self._fields)): setattr (self, self._fields[i][2], data[i])
 
     def print_table (self):
         col_len = max (len (p[2]) for p in self._fields)
-        print '\n'.join (('%-*s: ' + p[1]) % (col_len, p[2], getattr (self, p[2])) for p in self._fields)
+        print('\n'.join (('%-*s: ' + p[1]) % (col_len, p[2], getattr (self, p[2])) for p in self._fields))
 
     def check_signature (self):
         # The first two bytes in an MZ header are always 'M' and 'Z'

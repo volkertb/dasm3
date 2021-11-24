@@ -36,10 +36,10 @@ reg_set = Enum({'AL':0x00,'CL':0x01,'DL':0x02,'BL':0x03,
                 'ES':0x30,'CS':0x31,'SS':0x32,'DS':0x33,})
 
 # Define opcode maps
-lines = file (os.path.join (os.path.split (__file__)[0], 'debug_exe_8086_table.txt'), 'rb').readlines ()
-ops = filter (None, map (re.compile (r'([0-9A-F]{2})\s+(.+)').match, lines))
+lines = open(os.path.join (os.path.split (__file__)[0], 'debug_exe_8086_table.txt'), 'rb').readlines ()
+ops = filter (None, map (re.compile (b'([0-9A-F]{2})\s+(.+)').match, lines))
 opcode_map = dict ((int (m.group (1), 16), m.group(2).split ()) for m in ops)
-ops = filter (None, map (re.compile(r'(GRP\S+)/(\d)\s+(.+)').match, lines))
+ops = filter (None, map (re.compile(b'(GRP\S+)/(\d)\s+(.+)').match, lines))
 opcode_extension_map = dict (((m.group(1), int(m.group(2))), m.group(3).split()) for m in ops)
 
 # at this point, we don't need those anymore
@@ -57,18 +57,18 @@ class Instruction (object):
             a.set_parent (self)
 
     def __str__ (self):
-	out = ''
+        out = ''
         core = ' '.join (map (str, (self.addr, self.code, self.mnemonic)))
         if self.args: 
             out = core + ','.join(map(str, self.args))
         else: 
             out = core
-	return "%-64s" % out
+        return "%-64s" % out
 
 class ModRm (object):
-	def __init__ (self, rm, reg):
-		self.rm = rm
-		self.reg = reg
+    def __init__ (self, rm, reg):
+        self.rm = rm
+        self.reg = reg
 
 class Address (object):
     def __init__ (self, segment, offset):
@@ -147,13 +147,13 @@ class ArgInteger (Argument):
         self.value_size = value_size
 
     def __str__ (self):
-	sign = '+' 
+        sign = '+'
         if self._parent.code.get_opcode() == 0x83:
             # Special case: display as an 8-bit sign-extended value
-            v = self.value 
-	    if self.value >= 0x80: 
- 	        sign = '-'
-	        v = abs (self.value - 0x100)
+            v = self.value
+            if self.value >= 0x80:
+                sign = '-'
+                v = abs (self.value - 0x100)
             return '%c%02X' % (sign, v) 
         else:
             return '%0*X' % (self.value_size/4, self.value)
@@ -225,12 +225,12 @@ class ArgDereference (Argument):
                 # 8-bit displacement; always preceeded by at least one term
                 disp = self.disp
                 # do we need a '+' or '-' sign?
-		sign = '+' 
+                sign = '+'
                 if disp >= 0x80: # negative, '-' sign
-			disp = abs (disp - 0x100)
-			sign = '-'
+                    disp = abs (disp - 0x100)
+                    sign = '-'
                 rv.append('%c%02X' % (sign, disp)) # ... or '+' sign
-		n_terms += 1
+                n_terms += 1
             else:
                 # 16-bit displacement
                 if n_terms: 
@@ -272,7 +272,7 @@ class Disassembler (object):
         # reg = (modrm >> 3) & 7
         # rm = modrm & 7
 	
-	mod, reg, rm = DestructureModRmByte (modrm)
+        mod, reg, rm = DestructureModRmByte (modrm)
 
         if mod == 0:
             if rm == 6:
@@ -425,5 +425,5 @@ class Disassembler (object):
                 yield (self.read_instruction())
             except:
                 if not quiet: 
-                    print 'Fault in instruction at %d' % start
+                    print('Fault in instruction at %d' % start)
                 break
