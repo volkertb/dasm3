@@ -1,6 +1,8 @@
 #! /usr/bin/python
 
 import sys
+import os
+sys.path.append(os.path.join('..','..'))
 import dasm3
 
 def dump_com_file (src_pn, segment, offset):
