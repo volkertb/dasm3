@@ -18,5 +18,7 @@ jobs:
           architecture: 'x64'
       # You can test your matrix by printing the current Python version
       - name: Run dasm3 test
-        run: PYTHONPATH=$GITHUB_WORKSPACE cd test && python test.py DOSBOX/RANDOM.COM 076B:0100
+        run: PYTHONPATH=$GITHUB_WORKSPACE cd test && python test.py DOSBOX/RANDOM.COM 076B:0100 > /tmp/RANDOM.LST
+      - name: Verify that output is same as before Python 3 port
+        run: diff test/DOSBOX/RANDOM_TEST_PY2.LST /tmp/RANDOM.LST
 
