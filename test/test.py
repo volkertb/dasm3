@@ -1,10 +1,12 @@
-#! /usr/bin/python
+#! /bin/env python
 
 import sys
+import os
+sys.path.append(os.path.join('..','..'))
 import dasm3
 
 def dump_com_file (src_pn, segment, offset):
-   src_fp = file (src_pn, 'rb')
+   src_fp = open (src_pn, 'rb')
    # dst_fp     = file(dst_pn, 'wb')
    dst_fp = sys.__stdout__ 
    d          = dasm3.Disassembler()

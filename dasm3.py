@@ -14,8 +14,16 @@
 # along with dasm3.py.  If not, see <http://www.gnu.org/licenses/>.
 
 import    os
+import    sys
 import    re
 
+assert sys.version_info.major in {2,3}
+if sys.version_info.major == 2:
+    ord_fn  = ord
+    ord_map = lambda it: map(ord, it)
+else:
+    ord_fn  = lambda x: x
+    ord_map = lambda x: x
 
 # Wrap a 1:1 mapping of symbol names to literals
 class Enum (object):
@@ -36,11 +44,17 @@ reg_set = Enum({'AL':0x00,'CL':0x01,'DL':0x02,'BL':0x03,
                 'ES':0x30,'CS':0x31,'SS':0x32,'DS':0x33,})
 
 # Define opcode maps
-lines = file (os.path.join (os.path.split (__file__)[0], 'debug_exe_8086_table.txt'), 'rb').readlines ()
-ops = filter (None, map (re.compile (r'([0-9A-F]{2})\s+(.+)').match, lines))
-opcode_map = dict ((int (m.group (1), 16), m.group(2).split ()) for m in ops)
-ops = filter (None, map (re.compile(r'(GRP\S+)/(\d)\s+(.+)').match, lines))
-opcode_extension_map = dict (((m.group(1), int(m.group(2))), m.group(3).split()) for m in ops)
+lines = open(os.path.join (os.path.split (__file__)[0], 'debug_exe_8086_table.txt'), 'rb').readlines ()
+ops = filter (None, map (re.compile (b'([0-9A-F]{2})\s+(.+)').match, lines))
+if sys.version_info.major == 2:
+    opcode_map = dict ((int (m.group (1), 16), m.group(2).split ()) for m in ops)
+else:
+    opcode_map = dict ((int (m.group (1), 16), m.group(2).decode().split ()) for m in ops)
+ops = filter (None, map (re.compile(b'(GRP\S+)/(\d)\s+(.+)').match, lines))
+if sys.version_info.major == 2:
+    opcode_extension_map = dict (((m.group(1), int(m.group(2))), m.group(3).split()) for m in ops)
+else:
+    opcode_extension_map = dict (((m.group(1).decode(), int(m.group(2))), m.group(3).decode().split()) for m in ops)
 
 # at this point, we don't need those anymore
 del lines 
@@ -57,18 +71,18 @@ class Instruction (object):
             a.set_parent (self)
 
     def __str__ (self):
-	out = ''
+        out = ''
         core = ' '.join (map (str, (self.addr, self.code, self.mnemonic)))
         if self.args: 
             out = core + ','.join(map(str, self.args))
         else: 
             out = core
-	return "%-64s" % out
+        return "%-64s" % out
 
 class ModRm (object):
-	def __init__ (self, rm, reg):
-		self.rm = rm
-		self.reg = reg
+    def __init__ (self, rm, reg):
+        self.rm = rm
+        self.reg = reg
 
 class Address (object):
     def __init__ (self, segment, offset):
@@ -147,16 +161,16 @@ class ArgInteger (Argument):
         self.value_size = value_size
 
     def __str__ (self):
-	sign = '+' 
+        sign = '+'
         if self._parent.code.get_opcode() == 0x83:
             # Special case: display as an 8-bit sign-extended value
-            v = self.value 
-	    if self.value >= 0x80: 
- 	        sign = '-'
-	        v = abs (self.value - 0x100)
+            v = self.value
+            if self.value >= 0x80:
+                sign = '-'
+                v = abs (self.value - 0x100)
             return '%c%02X' % (sign, v) 
         else:
-            return '%0*X' % (self.value_size/4, self.value)
+            return '%0*X' % (self.value_size//4, self.value)
 
 class ArgDereference (Argument):
     # "qualifier opcodes, require WORD PTR or BYTE PTR qualifier
@@ -225,12 +239,12 @@ class ArgDereference (Argument):
                 # 8-bit displacement; always preceeded by at least one term
                 disp = self.disp
                 # do we need a '+' or '-' sign?
-		sign = '+' 
+                sign = '+'
                 if disp >= 0x80: # negative, '-' sign
-			disp = abs (disp - 0x100)
-			sign = '-'
+                    disp = abs (disp - 0x100)
+                    sign = '-'
                 rv.append('%c%02X' % (sign, disp)) # ... or '+' sign
-		n_terms += 1
+                n_terms += 1
             else:
                 # 16-bit displacement
                 if n_terms: 
@@ -257,7 +271,7 @@ class Disassembler (object):
         self.modrm = None
 
     def read_integer (self, num_bytes):
-        rv = sum (ord (self.bytes[self.index + i]) * pow(2, i*8) for i in range (num_bytes))
+        rv = sum (ord_fn(self.bytes[self.index + i]) * pow(2, i*8) for i in range (num_bytes))
         self.index += num_bytes
         return rv
 
@@ -265,14 +279,14 @@ class Disassembler (object):
         if self.modrm: 
             return
 
-        modrm = ord (self.bytes[self.index])
+        modrm = ord_fn(self.bytes[self.index])
         self.index += 1
 
         # mod = modrm >> 6
         # reg = (modrm >> 3) & 7
         # rm = modrm & 7
 	
-	mod, reg, rm = DestructureModRmByte (modrm)
+        mod, reg, rm = DestructureModRmByte (modrm)
 
         if mod == 0:
             if rm == 6:
@@ -319,7 +333,7 @@ class Disassembler (object):
         self.modrm = ModRm (ArgDereference (base=base, index=index, disp=disp, disp_size=disp_size), reg)
 
     def read_opcode (self):
-        opcode = ord (self.bytes[self.index])
+        opcode = ord_fn(self.bytes[self.index])
         self.index += 1
         mnemonic = opcode_map[opcode][0]
         arguments = opcode_map[opcode][1:]
@@ -378,17 +392,17 @@ class Disassembler (object):
                 return ArgInteger (value, 8)
             else:
                 size = self.size_lut[desc[1]]
-                return ArgInteger (self.read_integer (size / 8), size)
+                return ArgInteger (self.read_integer (size // 8), size)
         elif desc[0] == 'J':
             size = self.size_lut[desc[1]]
-            return ArgOffset (self.read_integer (size / 8), size)
+            return ArgOffset (self.read_integer (size // 8), size)
         elif desc[0] == 'O':
             return ArgDereference (type = desc[1], disp = self.read_integer (2), disp_size=16)
         elif desc[0] == 'S':
             self.read_modrm ()
             return ArgRegister (code=self.modrm.reg & 0x3, type='S')
         else:
-            raise "Unknown argument description %s" % desc
+            raise Exception("Unknown argument description %s" % desc)
 
     def read_instruction (self):
         self.modrm = None
@@ -399,12 +413,12 @@ class Disassembler (object):
         if mnemonic == '--':
             # Illegal opcode, use the 'DB' pseudo-instruction
             mnemonic = Mnemonic ('DB')
-            arguments = [ArgInteger (ord (self.bytes[start]), 8)]
+            arguments = [ArgInteger (ord_fn(self.bytes[start]), 8)]
         else:
             mnemonic = Mnemonic (mnemonic)
             arguments = filter(None, map(self.make_argument, arguments))
 
-        code = MachineCode (map(ord, self.bytes[start : self.index]))
+        code = MachineCode ( ord_map(self.bytes[start : self.index]))
         return Instruction (address, code, mnemonic, *arguments)
 
     def disassemble (self, bytes, segment=0, offset=0, trap=0, quiet=0):
@@ -425,5 +439,5 @@ class Disassembler (object):
                 yield (self.read_instruction())
             except:
                 if not quiet: 
-                    print 'Fault in instruction at %d' % start
+                    print('Fault in instruction at %d' % start)
                 break
